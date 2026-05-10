@@ -1,7 +1,16 @@
 import os
 import asyncio
 import logging
+import sys
 from dotenv import load_dotenv
+
+# Fix per Pyrogram su Python 3.10+ (gestione event loop)
+if sys.version_info >= (3, 10):
+    try:
+        loop = asyncio.get_event_loop()
+    except RuntimeError:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
 
 from pyrogram import Client
 from motor.motor_asyncio import AsyncIOMotorClient
