@@ -62,7 +62,20 @@ async def main():
     os.makedirs("downloads", exist_ok=True)
     
     async with app:
-        logger.info(f"Connesso con successo! Inizio scansione del canale {CHANNEL_ID}...")
+        logger.info(f"Connesso con successo come utente! Sincronizzazione in corso...")
+        
+        # FIX: Su nuove sessioni Pyrogram non conosce l'ID del canale. Dobbiamo trovarlo nei dialoghi.
+        logger.info("Cerco il canale tra le tue chat per autorizzare l'accesso...")
+        trovato = False
+        async for dialog in app.get_dialogs():
+            if dialog.chat.id == CHANNEL_ID:
+                trovato = True
+                break
+                
+        if not trovato:
+            logger.warning(f"Attenzione: Non ho trovato il canale {CHANNEL_ID} tra le tue chat. Potrebbe dare errore se non hai accesso.")
+            
+        logger.info(f"Inizio scansione del canale {CHANNEL_ID}...")
         
         # Scorriamo la cronologia (dall'ultimo al primo o viceversa, iter_history scorre dalla fine)
         # Limit a 0 significa scarica tutto, modificalo per testare su un campione più piccolo se vuoi.
