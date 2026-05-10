@@ -53,7 +53,7 @@ books_collection = db["books"]
 # Funzioni Helper
 # ==========================================
 
-def extract_epub_metadata(file_path: str) -> Dict[str, str]:
+def extract_epub_metadata(file_path: str, original_file_name: str = "") -> Dict[str, str]:
     """
     Legge il file EPUB e ne estrae i metadati principali usando ebooklib.
     Restituisce un dizionario con titolo, autore, data e isbn (se presente).
@@ -72,6 +72,12 @@ def extract_epub_metadata(file_path: str) -> Dict[str, str]:
         titles = book.get_metadata('DC', 'title')
         if titles:
             metadata["title"] = titles[0][0]
+        else:
+            # Fallback sul nome del file se manca il tag title
+            if original_file_name:
+                clean_name = re.sub(r'\.epub$', '', original_file_name, flags=re.IGNORECASE)
+                clean_name = clean_name.replace('_', ' ').replace('-', ' ')
+                metadata["title"] = clean_name
             
         # Estrazione Autore
         creators = book.get_metadata('DC', 'creator')
@@ -135,25 +141,31 @@ async def fetch_google_books_data(isbn: Optional[str], title: Optional[str], aut
         
     try:
         async with aiohttp.ClientSession() as session:
-            async with session.get(url) as response:
-                if response.status == 200:
-                    data = await response.json()
-                    if "items" in data and len(data["items"]) > 0:
-                        volume_info = data["items"][0].get("volumeInfo", {})
-                        
-                        api_data["description"] = volume_info.get("description")
-                        api_data["page_count"] = volume_info.get("pageCount")
-                        api_data["language"] = volume_info.get("language")
-                        
-                        categories = volume_info.get("categories")
-                        if categories:
-                            api_data["genre"] = categories[0]
+            for attempt in range(3):
+                async with session.get(url) as response:
+                    if response.status == 200:
+                        data = await response.json()
+                        if "items" in data and len(data["items"]) > 0:
+                            volume_info = data["items"][0].get("volumeInfo", {})
                             
-                        image_links = volume_info.get("imageLinks")
-                        if image_links:
-                            api_data["cover_url"] = image_links.get("thumbnail")
-                else:
-                    logger.warning(f"Errore da Google Books API: HTTP {response.status}")
+                            api_data["description"] = volume_info.get("description")
+                            api_data["page_count"] = volume_info.get("pageCount")
+                            api_data["language"] = volume_info.get("language")
+                            
+                            categories = volume_info.get("categories")
+                            if categories:
+                                api_data["genre"] = categories[0]
+                                
+                            image_links = volume_info.get("imageLinks")
+                            if image_links:
+                                api_data["cover_url"] = image_links.get("thumbnail")
+                        break  # Usciamo dal loop retry se tutto va bene
+                    elif response.status in [429, 503]:
+                        logger.warning(f"Errore da Google Books API: HTTP {response.status}. Tentativo {attempt+1}/3. Attesa prima del riprova...")
+                        await asyncio.sleep(2 * (attempt + 1))
+                    else:
+                        logger.warning(f"Errore da Google Books API: HTTP {response.status}")
+                        break
     except Exception as e:
         logger.error(f"Eccezione durante la chiamata API di Google Books: {e}")
         
@@ -191,7 +203,7 @@ async def handle_epub(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
         
         # 2. Estrazione dati locali
         logger.info("Estrazione metadati locali...")
-        local_metadata = extract_epub_metadata(temp_path)
+        local_metadata = extract_epub_metadata(temp_path, original_file_name=file_name)
         logger.info(f"Metadati estratti: {local_metadata}")
         
         # 3. Arricchimento API

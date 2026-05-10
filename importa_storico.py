@@ -89,11 +89,13 @@ async def main():
                 
                 logger.info(f"Trovato EPUB: {file_name} (Msg ID: {message.id})")
                 
-                # Controlliamo se esiste già nel db per saltarlo e risparmiare API Google
+                # Controlliamo se esiste già nel db e se ha già tutti i dettagli (es. description o cover_url)
                 existing = await books_collection.find_one({"telegram_file_unique_id": file_unique_id})
-                if existing:
-                    logger.info(f"File {file_name} già presente nel database. Salto...")
+                if existing and existing.get("description"):
+                    logger.info(f"File {file_name} già presente e completo. Salto...")
                     continue
+                elif existing:
+                    logger.info(f"File {file_name} presente ma incompleto. Riprovo arricchimento API...")
                 
                 temp_path = os.path.join("downloads", f"{file_unique_id}.epub")
                 
@@ -102,8 +104,8 @@ async def main():
                     logger.info("Scaricamento file in corso...")
                     await app.download_media(message, file_name=temp_path)
                     
-                    # 2. Estrazione dati locali
-                    local_metadata = extract_epub_metadata(temp_path)
+                    # 2. Estrazione dati locali (passiamo anche il nome file originale come fallback)
+                    local_metadata = extract_epub_metadata(temp_path, original_file_name=file_name)
                     
                     # 3. Arricchimento API
                     api_data = await fetch_google_books_data(
