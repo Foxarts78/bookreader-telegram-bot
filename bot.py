@@ -87,17 +87,18 @@ def extract_epub_metadata(file_path: str) -> Dict[str, str]:
         identifiers = book.get_metadata('DC', 'identifier')
         if identifiers:
             for identifier in identifiers:
-                val = identifier[0].lower()
-                # Cerchiamo un formato ISBN base (solo numeri o trattini, o prefix isbn)
-                if 'isbn' in val:
-                    # Estrae solo i numeri/trattini dall'id
-                    match = re.search(r'[\d\-]{10,17}', val)
-                    if match:
-                        metadata["isbn"] = match.group(0).replace('-', '')
+                if identifier[0]:
+                    val = str(identifier[0]).lower()
+                    # Cerchiamo un formato ISBN base (solo numeri o trattini, o prefix isbn)
+                    if 'isbn' in val:
+                        # Estrae solo i numeri/trattini dall'id
+                        match = re.search(r'[\d\-]{10,17}', val)
+                        if match:
+                            metadata["isbn"] = match.group(0).replace('-', '')
+                            break
+                    elif re.match(r'^[\d\-]{10,17}$', val):
+                        metadata["isbn"] = val.replace('-', '')
                         break
-                elif re.match(r'^[\d\-]{10,17}$', val):
-                    metadata["isbn"] = val.replace('-', '')
-                    break
                     
     except Exception as e:
         logger.error(f"Errore durante l'estrazione metadati da {file_path}: {e}")
