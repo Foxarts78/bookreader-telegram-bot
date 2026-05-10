@@ -1,0 +1,10 @@
+# Python / Venv
+venv-bookbot/
+__pycache__/
+*.pyc
+
+# Env
+.env
+
+# Books
+*.epub
