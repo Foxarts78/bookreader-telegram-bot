@@ -6,4 +6,3 @@ python-dotenv>=1.0.0
 
 # Per importa_storico.py
 pyrogram>=2.0.10
-TgCrypto>=1.2.5
