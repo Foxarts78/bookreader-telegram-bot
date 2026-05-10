@@ -1,0 +1,15 @@
+[Unit]
+Description=BookReader Telegram Bot per Indicizzazione EPUB
+After=network.target
+
+[Service]
+User=tuo_utente_gcp
+Group=tuo_gruppo_gcp
+WorkingDirectory=/percorso/assoluto/alla/cartella/del/bot/bookreader-telegram-bot
+Environment="PATH=/percorso/assoluto/alla/cartella/del/bot/bookreader-telegram-bot/venv-bookbot/bin"
+ExecStart=/percorso/assoluto/alla/cartella/del/bot/bookreader-telegram-bot/venv-bookbot/bin/python bot.py
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
